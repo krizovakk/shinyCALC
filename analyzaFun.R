@@ -1,14 +1,19 @@
-# ------------------------------------------------------------------------------ initials
+# ------------------------------------------------------------------------------ SETUP
+
 
 library(tidyverse)
 library(readxl)
 library(lubridate)
 
-analyza_data <- function(profil, delOd, delDo, path = "data/") {
+analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   
   tms_now <- Sys.Date()
+  print(tms_now)
+  
   
   # ---------------------------------------------------------------------------- INPUT :: forward - OK
+  
+  
   a <- read_excel(file.path("data", "input_fwd.xlsx"), 
                   sheet = "Rentry")
   a$mesic <- as.Date(a$mesic, origin = "1899-12-30")
@@ -20,8 +25,11 @@ analyza_data <- function(profil, delOd, delDo, path = "data/") {
   # 
   # # if (any(is.na(fwd$PFC))) stop("Nemáš komplet PFC krivku")
   # # if (any(is.na(fwd$FX))) stop("Nemáš komplet FX krivku")
-  # 
+  
+  
   # ---------------------------------------------------------------------------- INPUT :: OTC - OK
+  
+  
   # csv <- read.csv(file.path(path, "CZ-VTP.csv"), header = TRUE, sep = ",")
   b <- read.csv("X:/OTC/CSV/CZ-VTP.csv", header = TRUE, sep = ",")
   otc <- b %>%
@@ -61,13 +69,17 @@ analyza_data <- function(profil, delOd, delDo, path = "data/") {
       cal = as.character(ifelse(str_detect(season, "^CZ VTP \\d{4}$"), paste0("Cal", str_remove(year, "^..")), NA))
     )
 
+  
   # ---------------------------------------------------------------------------- CREATE :: frame - OK
+  
+  
   frameOd <- as.Date("2025-01-01")
   frameDo <- as.Date("2028-12-31")
   framePer <- seq(from = frameOd, to = frameDo, by = "month")
   
   delPer <- as.POSIXct(seq(from = delOd, to = delDo, by = "month") %>% head(-1)) # head = maze posledni element (1.1.2027)
   print(delPer)
+  
   frame <- data.frame(framePer) %>%
     mutate(
       year = year(framePer),
@@ -85,6 +97,7 @@ analyza_data <- function(profil, delOd, delDo, path = "data/") {
     left_join(fwd, by = c("framePer" = "mesic")) %>% 
     mutate(dodavka = ifelse(framePer %in% delPer, 1, 0)) %>%  
     select(framePer, year, quater, month, now, dodavka, profilMWh, PFC, FX)
+  
   
   # ---------------------------------------------------------------------------- CREATE :: data_vstup - OK
   
@@ -132,23 +145,12 @@ analyza_data <- function(profil, delOd, delDo, path = "data/") {
     filter(dodavka == 1) # final df to match table on sheet Kalkulace
 
 
-  # ---------------------------------------------------------------------------- CALCULATE :: fix_cena
-  # data_vstup <- frame %>%
-  #   filter(dodavka == 1) %>%
-  #   mutate(cenaEUR = profilMWh * PFC)
-
-  # suma_profil <- sum(data_vstup$profilMWh, na.rm = TRUE)
-  # suma_cenaEUR <- sum(data_vstup$cenaEUR, na.rm = TRUE)
-  # 
-  # fix_cena <- data.frame(
-  #   Od = delOd,
-  #   Do = delDo,
-  #   `Cena EUR` = round(suma_cenaEUR / suma_profil, 2)
-  # )
+  # ---------------------------------------------------------------------------- CALCULATE :: fix_cena - OK
+  
   
   # vypocty pod tabulkou
 
-  suma_profil <- sum(data_vstup$profilMWh, na.rm = TRUE)
+  suma_profil <- round(sum(data_vstup$profilMWh, na.rm = TRUE), 0)
   suma_cenaEUR <- sum(data_vstup$cenaEUR, na.rm = TRUE)
   suma_vazenaCena <- sum(data_vstup$vazenaCena, na.rm = TRUE)
   mean_PFC <- mean(data_vstup$PFCprepoc, na.rm = TRUE)
@@ -160,24 +162,69 @@ analyza_data <- function(profil, delOd, delDo, path = "data/") {
 
   # # vypocty nad tabulkou
 
-  naklad_profil <- nakup-mean_PFC
+  naklad_profil <- round(nakup-mean_PFC, 2)
   fin_cenaEUR <- ceiling(prodej_eur/0.025) * 0.025 # zaokrouhleni na nejblizsi nejvyssi hranici 0,025
   fin_cenaCZK <- ceiling((fin_cenaEUR*kurz)/0.05) * 0.05 # zaokrouhleni na nejblizsi nejvyssi hranici 0,05
 
-  # ---------------------------------------------------------------------------- PRINT :: fix_cena
+  
+  # ---------------------------------------------------------------------------- CREATE :: marze - IP
+  
+  
+  # marzeNazev <- c("minimalni", "doporucena")
+  # marzeHodnota <- c(1.2, 6)
+  # 
+  # marze <- data.frame(
+  #   varianta = marzeNazev, 
+  #   hodnota = marzeHodnota)
+  marzeMin <- 1.2
+  marzeDop <- 6
+  
+  
+  # ---------------------------------------------------------------------------- RETURN :: fix_cena - OK
+  
+  # 
+  # fix_cena <- data.frame(
+  #   Od = delOd,
+  #   Do = delDo,
+  #   `Objem [MWh]` = suma_profil,
+  #   `Předávací cena EUR` = round(fin_cenaEUR, 2),
+  #   `Předávací cena CZK` = round(fin_cenaCZK, 2),
+  #   `Náklad na BSD [€]` = bsd,
+  #   check.names = FALSE # aby nebyly v nazvu sloupcu misto mezer tecky
+  # )
   
   fix_cena <- data.frame(
-    Od = delOd,
-    Do = delDo,
-    `Cena EUR` = fin_cenaEUR,
-    `Cena CZK` = fin_cenaCZK,
-    # `Naklad na profil` = naklad_profil,
-    `Naklad na BSD` = bsd,
-    check.names = FALSE # aby nebyly v nazvu sloupcu misto mezer tecky
+    Parametr = c(
+      "Obchodník",
+      "Zákazník",
+      "Období dodávky",
+      "Objem [MWh]",
+      "Cena [€]",
+      "Náklad na profil [€]",
+      "Náklad na BSD [€]",
+      "Marže [€]",
+      "Cena pro zákazníka"
+    ),
+    Hodnota = c(
+      obch,
+      zak,
+      paste0(delOd, " až ", delDo),
+      suma_profil,
+      fin_cenaEUR,
+      naklad_profil,
+      bsd,
+      paste("Minimální:", marzeMin, " /  Doporučená:", marzeDop),
+      paste("Minimální:", fin_cenaEUR+marzeMin, " /  Doporučená:", fin_cenaEUR+marzeDop)
+    ),
+    check.names = FALSE
   )
+  
+  colnames(fix_cena) <- NULL
+  
 
   print(fix_cena)
-
-  # return(data_vstup)
   return(fix_cena)
+  # return(tabulka)
+
 }
+
