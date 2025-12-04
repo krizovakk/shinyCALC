@@ -41,7 +41,7 @@ ui <- page_fillable(
         value = ""
       ) %>% 
         tagAppendAttributes(required = "required" # snaha o nastaveni povinneho pole
-      ),
+        ),
       
       fileInput(
         inputId = "upload", 
@@ -90,7 +90,7 @@ ui <- page_fillable(
 
 
 server <- function(input, output, session) {
-
+  
   # ---- REAKTIVNÍ NAČTENÍ EXCELU ----
   
   data_upload <- reactive({
@@ -116,36 +116,53 @@ server <- function(input, output, session) {
       theme(axis.text.x = element_text(angle = 90))
   })
   
+  # ---- ZADANI OBDOBI DODAVKY ----
+  
   observeEvent(input$run, {
     req(input$date)
     
-    delOd <- input$date[1]
-    delDo <- input$date[2]
+    start <- as.Date(format(input$date[1], "%Y-%m-01"))
+    end   <- as.Date(format(input$date[2], "%Y-%m-01"))
+    
+    updateDateRangeInput( # uprava datumu na cele mesice
+      session,
+      "date",
+      start = start,
+      end = end
+    )
+    
+    delOd <- start
+    delDo <- end
+
     
     print(delOd)
     print(delDo)
     
   })
   
+  # ---- SPUSTENI VYPOCTU ----
+  # ---- GENEROVANI PDF ----
+  
   observeEvent(input$run, {
     req(input$upload, input$date, input$text1, input$text2)
-    
-    # načtení nahraného profilu
+   
     profil <- read_excel(input$upload$datapath) %>%
       mutate(mesic = month(datum),
-             rok = year(datum))
+             rok = year(datum))  # načtení nahraného profilu
     
-    delOd <- input$date[1]
-    delDo <- input$date[2]
+    delOd <- as.Date(format(input$date[1], "%Y-%m-01"))
+    delDo <- as.Date(format(input$date[2], "%Y-%m-01"))
     obch <- input$text1
     zak <- input$text2
     
-    source("analyzaFun.R") # načte funkci analyza_data()
+    source("analyzaFun.R") 
     
     result <- analyza_data(profil, delOd, delDo, 
                            obch = obch, zak = zak, 
                            path = "data/")
+   
     fix_cena <- result$fix_cena
+    
     req(fix_cena)
     if(!is.data.frame(fix_cena)) fix_cena <- as.data.frame(fix_cena)
     
@@ -155,58 +172,9 @@ server <- function(input, output, session) {
       options = list(dom = 't', ordering = FALSE)
     )
     
-    # output$results <- DT::renderDT(result, 
-    #                                rownames = F,
-    #                                # options = list(pageLength = 15, lengthChange = FALSE),
-    #                                options = list(dom = 't', ordering = FALSE))
-    # 
-    # output$pdf <- downloadHandler(
-    #   filename = function() {
-    #     paste0("Report_", Sys.time(), ".pdf")
-    #   },
-    #   content = function(file) {
-    #     
-    #     req(input$upload, input$date, input$text1, input$text2)
-    #     
-    #     profil <- read_excel(input$upload$datapath)
-    #     
-    #     source("analyzaFun.R")
-    #     
-    #     result <- analyza_data(
-    #       profil,
-    #       delOd = input$date[1],
-    #       delDo = input$date[2],
-    #       obch = input$text1,
-    #       zak = input$text2,
-    #       path = "data/"
-    #     )
-    #     
-    #     # Pokud funkce analyza_data vrací fix_cena uvnitř result:
-    #     fix_cena <- result$fix_cena
-    #     fwd <- result$fwd
-    #     otc <- result$otc
-    #     
-    #     rmarkdown::render(
-    #       input = "report.Rmd",
-    #       output_file = file,
-    #       params = list(
-    #         obchodnik = input$text1,
-    #         zakaznik = input$text2,
-    #         datum_od = input$date[1],
-    #         datum_do = input$date[2],
-    #         fwd <- result$fwd,       # už je tibble
-    #         otc <- result$otc,       # tibble
-    #         fix_cena <- result$fix_cena,
-    #         profil <- result$profil
-    #       ),
-    #       envir = new.env(parent = globalenv())
-    #     )
-    #   }
-    # )
-    
     output$downloadReport <- downloadHandler(
       filename = function() {
-        paste0("Report_", Sys.Date(), ".pdf")
+        paste0("VypocetFixCenyZP_report_", Sys.time(), ".pdf")
       },
       content = function(file) {
         rmarkdown::render(
@@ -226,13 +194,7 @@ server <- function(input, output, session) {
         )
       }
     )
-    
-    
-    })
-  
-  # output$value <- renderText({input$text1})
-  # output$value <- renderText({input$text2})
-
+  })
 }
 
 
