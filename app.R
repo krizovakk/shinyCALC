@@ -78,7 +78,8 @@ ui <- page_fillable(
       #   value = "(možnost napsat komentář do pdf)"), 
       # 
       
-      downloadButton("downloadReport", label = "Stáhnout PDF report")
+      downloadButton("downloadReport", 
+                     label = "Stáhnout PDF report")
       
       
     )
@@ -123,7 +124,7 @@ server <- function(input, output, session) {
     
     start <- as.Date(format(input$date[1], "%Y-%m-01"))
     end   <- as.Date(format(input$date[2], "%Y-%m-01"))
-    
+
     updateDateRangeInput( # uprava datumu na cele mesice
       session,
       "date",
@@ -133,10 +134,6 @@ server <- function(input, output, session) {
     
     delOd <- start
     delDo <- end
-
-    
-    print(delOd)
-    print(delDo)
     
   })
   
@@ -150,10 +147,13 @@ server <- function(input, output, session) {
       mutate(mesic = month(datum),
              rok = year(datum))  # načtení nahraného profilu
     
-    delOd <- as.Date(format(input$date[1], "%Y-%m-01"))
-    delDo <- as.Date(format(input$date[2], "%Y-%m-01"))
+    start <- as.Date(format(input$date[1], "%Y-%m-01"))
+    end <- as.Date(format(input$date[2], "%Y-%m-01"))
     obch <- input$text1
     zak <- input$text2
+    
+    delOd <- start
+    delDo <- end
     
     source("analyzaFun.R") 
     

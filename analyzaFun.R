@@ -18,7 +18,6 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   a <- read_excel(file.path("data", "input_fwd.xlsx"), 
                   sheet = "Rentry")
   a$mesic <- as.Date(a$mesic, origin = "1899-12-30")
-  str(a)
   fwd <- a %>% 
     rename("PFC" = NCG, "FX" = 'FX rate') %>% 
     filter(mesic > tms_now) # hodnoty fwd krivky od nasledujiciho mesice
