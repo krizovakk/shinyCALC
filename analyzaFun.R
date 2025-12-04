@@ -7,7 +7,8 @@ library(lubridate)
 
 analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   
-  tms_now <- Sys.Date()
+  # tms_now <- Sys.Date()
+  tms_now <- Sys.time()
   print(tms_now)
   
   
@@ -198,6 +199,7 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       "Obchodník",
       "Zákazník",
       "Období dodávky",
+      "Vytvoření nabídky",
       "Objem [MWh]",
       "Cena [€]",
       "Náklad na profil [€]",
@@ -209,6 +211,7 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       obch,
       zak,
       paste0(delOd, " až ", delDo),
+      format(as.POSIXct(tms_now, origin = "1899-12-30"), "%F %R"),
       suma_profil,
       fin_cenaEUR,
       naklad_profil,
@@ -222,9 +225,17 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   colnames(fix_cena) <- NULL
   
 
-  print(fix_cena)
-  return(fix_cena)
+  # print(fix_cena)
+  # return(fix_cena)
   # return(tabulka)
+  
+  return(list(
+    profil = profil,
+    fwd = fwd,
+    otc = otc,
+    fix_cena = fix_cena
+  ))
+  
 
 }
 

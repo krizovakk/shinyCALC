@@ -1,0 +1,32 @@
+---
+title: "Report kalkulačky"
+output: pdf_document
+params:
+  obchodnik: ""
+  zakaznik: ""
+  datum_od: ""
+  datum_do: ""
+  profil: NA
+  fwd: NA
+  otc: NA
+  fix_cena: NA
+---
+
+# Vstupní informace
+
+**Obchodník:** `r params$obchodnik`  
+**Zákazník:** `r params$zakaznik`  
+**Období dodávky:** `r params$datum_od` – `r params$datum_do`  
+
+---
+
+# Profil spotřeby
+```{r echo=FALSE}
+
+knitr::kable(params$profil, caption = "Profil spotřeby") 
+knitr::kable(params$fwd, caption = "FWD křivka") 
+knitr::kable(params$otc, caption = "OTC data") 
+knitr::kable(params$fix_cena, caption = "Fixní cena")
+
+```
+
