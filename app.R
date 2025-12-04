@@ -77,6 +77,10 @@ ui <- page_fillable(
       #   label = "Poznámka", 
       #   value = "(možnost napsat komentář do pdf)"), 
       # 
+      
+      downloadButton("downloadReport", label = "Stáhnout PDF report")
+      
+      
     )
   )
 )
@@ -138,15 +142,93 @@ server <- function(input, output, session) {
     
     source("analyzaFun.R") # načte funkci analyza_data()
     
-    result <- analyza_data(profil, delOd, delDo, obch = obch, zak = zak, 
+    result <- analyza_data(profil, delOd, delDo, 
+                           obch = obch, zak = zak, 
                            path = "data/")
+    fix_cena <- result$fix_cena
+    req(fix_cena)
+    if(!is.data.frame(fix_cena)) fix_cena <- as.data.frame(fix_cena)
     
-    output$results <- DT::renderDT(result, 
-                                   rownames = F,
-                                   # options = list(pageLength = 15, lengthChange = FALSE),
-                                   options = list(dom = 't', ordering = FALSE))
+    output$results <- DT::renderDT(
+      fix_cena,
+      rownames = FALSE,
+      options = list(dom = 't', ordering = FALSE)
+    )
     
-  })
+    # output$results <- DT::renderDT(result, 
+    #                                rownames = F,
+    #                                # options = list(pageLength = 15, lengthChange = FALSE),
+    #                                options = list(dom = 't', ordering = FALSE))
+    # 
+    # output$pdf <- downloadHandler(
+    #   filename = function() {
+    #     paste0("Report_", Sys.time(), ".pdf")
+    #   },
+    #   content = function(file) {
+    #     
+    #     req(input$upload, input$date, input$text1, input$text2)
+    #     
+    #     profil <- read_excel(input$upload$datapath)
+    #     
+    #     source("analyzaFun.R")
+    #     
+    #     result <- analyza_data(
+    #       profil,
+    #       delOd = input$date[1],
+    #       delDo = input$date[2],
+    #       obch = input$text1,
+    #       zak = input$text2,
+    #       path = "data/"
+    #     )
+    #     
+    #     # Pokud funkce analyza_data vrací fix_cena uvnitř result:
+    #     fix_cena <- result$fix_cena
+    #     fwd <- result$fwd
+    #     otc <- result$otc
+    #     
+    #     rmarkdown::render(
+    #       input = "report.Rmd",
+    #       output_file = file,
+    #       params = list(
+    #         obchodnik = input$text1,
+    #         zakaznik = input$text2,
+    #         datum_od = input$date[1],
+    #         datum_do = input$date[2],
+    #         fwd <- result$fwd,       # už je tibble
+    #         otc <- result$otc,       # tibble
+    #         fix_cena <- result$fix_cena,
+    #         profil <- result$profil
+    #       ),
+    #       envir = new.env(parent = globalenv())
+    #     )
+    #   }
+    # )
+    
+    output$downloadReport <- downloadHandler(
+      filename = function() {
+        paste0("Report_", Sys.Date(), ".pdf")
+      },
+      content = function(file) {
+        rmarkdown::render(
+          input = "report.Rmd",
+          output_file = file,
+          params = list(
+            obchodnik = input$text1,
+            zakaznik = input$text2,
+            datum_od = input$date[1],
+            datum_do = input$date[2],
+            profil = data_upload(),
+            fwd = result$fwd,
+            otc = result$otc,
+            fix_cena = result$fix_cena
+          ),
+          envir = new.env(parent = globalenv())
+        )
+      }
+    )
+    
+    
+    })
   
   # output$value <- renderText({input$text1})
   # output$value <- renderText({input$text2})
