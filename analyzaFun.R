@@ -220,13 +220,10 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
     ),
     check.names = FALSE
   )
-  
   colnames(fix_cena) <- NULL
   
-
-  # print(fix_cena)
-  # return(fix_cena)
-  # return(tabulka)
+  log <- paste(tms_now, obch, zak, suma_profil, delOd, delDo, fin_cenaEUR, sep = ";")
+  write(log, "data/kalkulackaZP_log.txt", sep = "\n", append = T)
   
   return(list(
     profil = profil,
@@ -234,7 +231,5 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
     otc = otc,
     fix_cena = fix_cena
   ))
-  
-
 }
 

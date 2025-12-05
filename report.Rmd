@@ -25,8 +25,8 @@ params:
 ```{r echo=FALSE}
 
 knitr::kable(params$profil, caption = "Profil spotřeby") 
-knitr::kable(params$fwd, caption = "FWD křivka") 
-knitr::kable(params$otc, caption = "OTC ceny") 
+# knitr::kable(params$fwd, caption = "FWD křivka") 
+# knitr::kable(params$otc, caption = "OTC ceny") 
 ```
 
 # Výsledná fixní cena
