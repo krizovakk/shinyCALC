@@ -33,5 +33,7 @@ knitr::kable(params$profil, caption = "Profil spotřeby")
 
 ```{r echo=FALSE}
 knitr::kable(params$fix_cena, caption = "Fixní cena")
+
 ```
 
+*Předávací ani prodejní cena neobsahují náklad na BSD a toleranci.*

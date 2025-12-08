@@ -199,31 +199,37 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       "Zákazník",
       "Období dodávky",
       "Vytvoření nabídky",
-      "Objem [MWh]",
-      "Cena [€]",
-      "Náklad na profil [€]",
-      "Náklad na BSD [€]",
-      "Marže [€]",
-      "Cena pro zákazníka"
-    ),
+      "Platnost nabídky",
+      "Celkový objem dodávky [MWh]",
+      "Předávací cena pro obchod [€]",
+      "Předávací cena pro obchod [CZK]",
+      "HM1 [€]",
+      "Prodejní cena pro zákazníka [€]",
+      "Prodejní cena pro zákazníka [CZK]"
+      ),
+    
     Hodnota = c(
       obch,
       zak,
       paste0(delOd, " až ", delDo),
       format(as.POSIXct(tms_now, origin = "1899-12-30"), "%F %R"),
+      paste0(format(as.POSIXct(Sys.Date(), origin = "1899-12-30"), "%F"), " 15:00"),
       suma_profil,
       fin_cenaEUR,
-      naklad_profil,
-      bsd,
+      fin_cenaCZK,
       paste("Minimální:", marzeMin, " /  Doporučená:", marzeDop),
-      paste("Minimální:", fin_cenaEUR+marzeMin, " /  Doporučená:", fin_cenaEUR+marzeDop)
-    ),
-    check.names = FALSE
+      paste("Minimální:", fin_cenaEUR+marzeMin, " /  Doporučená:", fin_cenaEUR+marzeDop),
+      paste("Minimální:", round(fin_cenaCZK+marzeMin*kurz, 2), 
+            " /  Doporučená:", round(fin_cenaCZK+marzeDop*kurz, 2))
+      )
   )
+
   colnames(fix_cena) <- NULL
   
-  log <- paste(tms_now, obch, zak, suma_profil, delOd, delDo, fin_cenaEUR, sep = ";")
-  write(log, "data/kalkulackaZP_log.txt", sep = "\n", append = T)
+  on.exit({
+    log <- paste(tms_now, obch, zak, suma_profil, delOd, delDo, fin_cenaEUR, sep = ";")
+    write(log, "data/kalkulackaZP_log.txt", append = TRUE)
+  })
   
   return(list(
     profil = profil,

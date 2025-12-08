@@ -66,7 +66,7 @@ ui <- page_fillable(
         label = "Období dodávky",
         separator = " - ",
         start = start_date,
-        end = start_date + 1,
+        end = start_date + months(1),
         # min = Sys.Date() - 14,
         # max = Sys.Date() + 14
       ),
@@ -81,6 +81,8 @@ ui <- page_fillable(
       #   label = "Poznámka", 
       #   value = "(možnost napsat komentář do pdf)"), 
       # 
+      
+      HTML('<span style="color:red">Předávací ani prodejní cena neobsahují náklad na BSD a toleranci.</span>'),
       
       downloadButton("downloadReport", 
                      label = "Stáhnout PDF report")
@@ -173,7 +175,9 @@ server <- function(input, output, session) {
     output$results <- DT::renderDT(
       fix_cena,
       rownames = FALSE,
-      options = list(dom = 't', ordering = FALSE)
+      options = list(dom = 't', 
+                     ordering = FALSE,
+                     paging = FALSE)
     )
     
     output$downloadReport <- downloadHandler(
