@@ -1,5 +1,7 @@
 ---
-title: "Report kalkulačky"
+title: "Kalkulačka fixní ceny ZP"
+subtitle: "Report k výpočtu"
+date: "`r Sys.time()`"
 output: pdf_document
 params:
   obchodnik: ""
@@ -12,21 +14,26 @@ params:
   fix_cena: NA
 ---
 
-# Vstupní informace
+# Základní informace
 
 **Obchodník:** `r params$obchodnik`  
 **Zákazník:** `r params$zakaznik`  
 **Období dodávky:** `r params$datum_od` – `r params$datum_do`  
 
----
+# Vstupní parametry
 
-# Profil spotřeby
 ```{r echo=FALSE}
 
 knitr::kable(params$profil, caption = "Profil spotřeby") 
-knitr::kable(params$fwd, caption = "FWD křivka") 
-knitr::kable(params$otc, caption = "OTC data") 
+# knitr::kable(params$fwd, caption = "FWD křivka") 
+# knitr::kable(params$otc, caption = "OTC ceny") 
+```
+
+# Výsledná fixní cena
+
+```{r echo=FALSE}
 knitr::kable(params$fix_cena, caption = "Fixní cena")
 
 ```
 
+*Předávací ani prodejní cena neobsahují náklad na BSD a toleranci.*
