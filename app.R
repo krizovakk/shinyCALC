@@ -47,29 +47,40 @@ ui <- page_fillable(
         tagAppendAttributes(required = "required" # snaha o nastaveni povinneho pole
         ),
       
-      fileInput(
-        inputId = "upload", 
-        label = "", 
-        buttonLabel = "Nahraj profil",
-        placeholder = "",
-        accept = c(".xls", ".xlsx")),
-      plotOutput("plot") 
-      
+      tagList(
+        tags$div("Nahrajte profil ve formátu XLS/XLSX. 
+                 Soubor musí obsahovat dva sloupce: datum a profilMWh.", 
+                 style = "color: grey; margin-bottom: 5px;"),
+        
+        fileInput(
+          inputId = "upload", 
+          label = NULL,         # skryjeme původní label
+          buttonLabel = "Nahraj profil",
+          placeholder = "",
+          accept = c(".xls", ".xlsx")
+        ),
+        
+        plotOutput("plot")
+      )
     ),
-    
+      
     card( 
       
       card_header("Výpočet ceny"),
       
-      dateRangeInput(
-        inputId = "date",
-        label = "Období dodávky",
-        separator = " - ",
-        start = start_date,
-        end = start_date + months(1),
-        # min = Sys.Date() - 14,
-        # max = Sys.Date() + 14
+      tags$div(
+        tags$label("Období dodávky"),
+        tags$div(style = "color: grey; margin-top: 10px; margin-bottom: 10px;",
+                 "Vyberte období, pro které chcete vytvořit nabídku."),
+        dateRangeInput(
+          inputId = "date",
+          label = NULL,     # skryjeme původní label
+          separator = " - ",
+          start = start_date,
+          end = start_date %m+% months(1)
+        )
       ),
+      
       
       actionButton(
         inputId = "run", 
@@ -82,7 +93,7 @@ ui <- page_fillable(
       #   value = "(možnost napsat komentář do pdf)"), 
       # 
       
-      HTML('<span style="color:red">Předávací ani prodejní cena neobsahují náklad na BSD a toleranci.</span>'),
+      HTML('<span style="color:DarkGoldenRod">Předávací ani prodejní cena neobsahují náklad na BSD a toleranci.</span>'),
       
       downloadButton("downloadReport", 
                      label = "Stáhnout PDF report")
@@ -130,7 +141,7 @@ server <- function(input, output, session) {
     
     start <- as.Date(format(input$date[1], "%Y-%m-01"))
     end   <- as.Date(format(input$date[2], "%Y-%m-01"))
-
+    
     updateDateRangeInput( # uprava datumu na cele mesice
       session,
       "date",
@@ -148,7 +159,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$run, {
     req(input$upload, input$date, input$text1, input$text2)
-   
+    
     profil <- read_excel(input$upload$datapath) %>%
       mutate(mesic = month(datum),
              rok = year(datum))  # načtení nahraného profilu
@@ -166,7 +177,7 @@ server <- function(input, output, session) {
     result <- analyza_data(profil, delOd, delDo, 
                            obch = obch, zak = zak, 
                            path = "data/")
-   
+    
     fix_cena <- result$fix_cena
     
     req(fix_cena)
