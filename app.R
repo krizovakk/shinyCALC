@@ -14,6 +14,10 @@ library(rvest) # html
 library(DT) # render table
 
 
+
+start_date <- as.Date(cut(Sys.Date(), "month")) + months(1)
+
+
 # ---------------------------------------------------- UI
 
 
@@ -61,8 +65,8 @@ ui <- page_fillable(
         inputId = "date",
         label = "Období dodávky",
         separator = " - ",
-        start = Sys.Date(),
-        # end = Sys.Date() + 1,
+        start = start_date,
+        end = start_date + 1,
         # min = Sys.Date() - 14,
         # max = Sys.Date() + 14
       ),
