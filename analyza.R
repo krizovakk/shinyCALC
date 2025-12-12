@@ -3,7 +3,6 @@
 
 library(tidyverse)
 library(readxl)
-library(lubridate)
 
 analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   
@@ -30,8 +29,8 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # ---------------------------------------------------------------------------- INPUT :: OTC - OK
   
   
-  # csv <- read.csv(file.path(path, "CZ-VTP.csv"), header = TRUE, sep = ",")
-  b <- read.csv("X:/OTC/CSV/CZ-VTP.csv", header = TRUE, sep = ",")
+  b <- read.csv(file.path(path, "CZ-VTP.csv"), header = TRUE, sep = ",")
+  # b <- read.csv("X:/OTC/CSV/CZ-VTP.csv", header = TRUE, sep = ",")
   otc <- b %>%
     select("season" = 1, "price" = 2) %>%
     filter(str_detect(season, "^CZ")) %>%
@@ -68,7 +67,7 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       ),
       cal = as.character(ifelse(str_detect(season, "^CZ VTP \\d{4}$"), paste0("Cal", str_remove(year, "^..")), NA))
     )
-
+  
   
   # ---------------------------------------------------------------------------- CREATE :: frame - OK
   
@@ -108,9 +107,9 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   bsd <- 1.2
   
   join <- frame %>%
-
+    
     # cena komodity
-
+    
     group_by(year) %>%
     mutate(yRatio = PFC/mean(PFC)) %>% # kdyz neni cely rok, hodi pres prumer NA
     ungroup() %>% group_by(year, quater) %>%
@@ -130,26 +129,26 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
                                 celyQ == "ANO" ~ qPrice,
                                 TRUE ~ calPrice),
            PFCprepoc = ifelse(!is.na(PFCratio), otcPrice*PFCratio, otcPrice),
-
+           
            # kurz EUR
-
+           
            swapPoint = (FX-low_spot)*1000,
            FXrecalc0 = aktual_spot+swapPoint/1000, # +surcharge (ale v excelu je 0)
            FXrecalc = FXrecalc0+surcharge,
-
+           
            cenaEUR = profilMWh*PFCprepoc,
            vazenaCena = profilMWh*FXrecalc)
-
+  
   data_vstup <- join %>%
     select(year, month, dodavka, profilMWh, PFCprepoc, cenaEUR, FXrecalc, vazenaCena) %>%
     filter(dodavka == 1) # final df to match table on sheet Kalkulace
-
-
+  
+  
   # ---------------------------------------------------------------------------- CALCULATE :: fix_cena - OK
   
   
   # vypocty pod tabulkou
-
+  
   suma_profil <- round(sum(data_vstup$profilMWh, na.rm = TRUE), 0)
   suma_cenaEUR <- sum(data_vstup$cenaEUR, na.rm = TRUE)
   suma_vazenaCena <- sum(data_vstup$vazenaCena, na.rm = TRUE)
@@ -159,13 +158,13 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   kurz <- suma_vazenaCena/suma_profil
   prodej_eur <- nakup+prirazka_nakup
   prodej_czk <- prodej_eur*kurz
-
+  
   # # vypocty nad tabulkou
-
+  
   naklad_profil <- round(nakup-mean_PFC, 2)
   fin_cenaEUR <- ceiling(prodej_eur/0.025) * 0.025 # zaokrouhleni na nejblizsi nejvyssi hranici 0,025
   fin_cenaCZK <- ceiling((fin_cenaEUR*kurz)/0.05) * 0.05 # zaokrouhleni na nejblizsi nejvyssi hranici 0,05
-
+  
   
   # ---------------------------------------------------------------------------- CREATE :: marze - IP
   
@@ -206,7 +205,7 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       "HM1 [€]",
       "Prodejní cena pro zákazníka [€]",
       "Prodejní cena pro zákazníka [CZK]"
-      ),
+    ),
     
     Hodnota = c(
       obch,
@@ -221,9 +220,9 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       paste("Minimální:", fin_cenaEUR+marzeMin, " /  Doporučená:", fin_cenaEUR+marzeDop),
       paste("Minimální:", round(fin_cenaCZK+marzeMin*kurz, 2), 
             " /  Doporučená:", round(fin_cenaCZK+marzeDop*kurz, 2))
-      )
+    )
   )
-
+  
   colnames(fix_cena) <- NULL
   
   on.exit({

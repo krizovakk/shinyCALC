@@ -14,6 +14,11 @@ params:
   fix_cena: NA
 ---
 
+
+```{r echo=FALSE, out.width="30%"}
+# knitr::include_graphics("C:/Users/krizova/Documents/R/02 cenoveKalkukacky/_vyvoj/shiny_app/data/22743_SPP_logo spp_final update.jpg")
+```
+
 # Základní informace
 
 **Obchodník:** `r params$obchodnik`  
@@ -27,6 +32,9 @@ params:
 knitr::kable(params$profil, caption = "Profil spotřeby") 
 # knitr::kable(params$fwd, caption = "FWD křivka") 
 # knitr::kable(params$otc, caption = "OTC ceny") 
+
+# "C:/Users/krizova/Documents/R/02 cenoveKalkukacky/_vyvoj/shiny_app/data/22743_SPP_logo spp_final update.jpg"
+
 ```
 
 # Výsledná fixní cena
