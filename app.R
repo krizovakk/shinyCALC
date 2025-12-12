@@ -1,14 +1,13 @@
 
-library(shiny) # aplikace
-library(bslib) # apliakce (layouty)
+# rsconnect::deployApp("C:/Users/krizova/Documents/R/02 cenoveKalkukacky/_vyvoj/shiny_app")
 
-library(dplyr)
-library(ggplot2)
+library(shiny) # aplikace
+library(bslib) # aplikace (layouty)
+
 library(tidyverse)
 library(readxl)
 library(writexl)
 
-library(lubridate) # prace s datumy
 library(zoo) # ?
 library(rvest) # html
 library(DT) # render table
@@ -34,13 +33,15 @@ ui <- page_fillable(
       
       textInput( 
         inputId = "text1", 
-        label = tagList("Obchodník", span("*", style = "color:red")), 
+        label = tagList("Obchodník", 
+                        span("*", style = "color:red")), 
         placeholder = ""
       ),
       
       textInput( 
         inputId = "text2", 
-        label = tagList("Zákazník", span("*", style = "color:red")),
+        label = tagList("Zákazník", 
+                        span("*", style = "color:red")),
         placeholder = "",
         value = ""
       ) %>% 
@@ -49,7 +50,7 @@ ui <- page_fillable(
       
       tagList(
         tags$div("Nahrajte profil ve formátu XLS/XLSX. 
-                 Soubor musí obsahovat dva sloupce: datum a profilMWh.", 
+                 Soubor musí obsahovat dva sloupce: \"datum\" a \"profilMWh\".", 
                  style = "color: grey; margin-bottom: 5px;"),
         
         fileInput(
@@ -77,7 +78,9 @@ ui <- page_fillable(
           label = NULL,     # skryjeme původní label
           separator = " - ",
           start = start_date,
-          end = start_date %m+% months(1)
+          end = start_date %m+% months(1),
+          min = start_date,                      # nepůjde zadat dřívější datum
+          max = ceiling_date(Sys.Date() %m+% years(3), "month")
         )
       ),
       
