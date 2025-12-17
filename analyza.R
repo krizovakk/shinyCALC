@@ -9,7 +9,8 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # tms_now <- Sys.Date()
   tms_now <- Sys.time()
   print(tms_now)
-  
+  colnames(profil) <- c("datum", "profilMWh", "mesic", "rok")
+  print(head(profil))
   
   # ---------------------------------------------------------------------------- INPUT :: forward - OK
   
@@ -150,6 +151,8 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # vypocty pod tabulkou
   
   suma_profil <- round(sum(data_vstup$profilMWh, na.rm = TRUE), 0)
+  acq <- data_vstup %>% 
+    group_by(year) %>% summarise(rocni_odber = round(sum(profilMWh, na.rm = T), 0))
   suma_cenaEUR <- sum(data_vstup$cenaEUR, na.rm = TRUE)
   suma_vazenaCena <- sum(data_vstup$vazenaCena, na.rm = TRUE)
   mean_PFC <- mean(data_vstup$PFCprepoc, na.rm = TRUE)
@@ -169,28 +172,14 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # ---------------------------------------------------------------------------- CREATE :: marze - IP
   
   
-  # marzeNazev <- c("minimalni", "doporucena")
-  # marzeHodnota <- c(1.2, 6)
-  # 
-  # marze <- data.frame(
-  #   varianta = marzeNazev, 
-  #   hodnota = marzeHodnota)
   marzeMin <- 1.2
   marzeDop <- 6
+  txt_marzeMin <- sprintf("%.2f", marzeMin) # text, zobrazuje cislo s presne 2 decimals
+  txt_marzeDop <- sprintf("%.2f", marzeDop)
   
   
   # ---------------------------------------------------------------------------- RETURN :: fix_cena - OK
   
-  # 
-  # fix_cena <- data.frame(
-  #   Od = delOd,
-  #   Do = delDo,
-  #   `Objem [MWh]` = suma_profil,
-  #   `Předávací cena EUR` = round(fin_cenaEUR, 2),
-  #   `Předávací cena CZK` = round(fin_cenaCZK, 2),
-  #   `Náklad na BSD [€]` = bsd,
-  #   check.names = FALSE # aby nebyly v nazvu sloupcu misto mezer tecky
-  # )
   
   fix_cena <- data.frame(
     Parametr = c(
@@ -199,7 +188,8 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       "Období dodávky",
       "Vytvoření nabídky",
       "Platnost nabídky",
-      "Celkový objem dodávky [MWh]",
+      "CQ [MWh]",
+      "ACQ [MWh]",
       "Předávací cena pro obchod [€]",
       "Předávací cena pro obchod [CZK]",
       "HM1 [€]",
@@ -214,10 +204,14 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       format(as.POSIXct(tms_now, origin = "1899-12-30"), "%F %R"),
       paste0(format(as.POSIXct(Sys.Date(), origin = "1899-12-30"), "%F"), " 15:00"),
       suma_profil,
-      fin_cenaEUR,
-      fin_cenaCZK,
-      paste("Minimální:", marzeMin, " /  Doporučená:", marzeDop),
-      paste("Minimální:", fin_cenaEUR+marzeMin, " /  Doporučená:", fin_cenaEUR+marzeDop),
+      paste(
+        paste(acq$year, acq$rocni_odber, sep = ": "),
+        collapse = ", "),
+      round(fin_cenaEUR, 2),
+      round(fin_cenaCZK, 2),
+      paste("Minimální:", txt_marzeMin, " /  Doporučená:", txt_marzeDop),
+      paste("Minimální:",  round(fin_cenaEUR+marzeMin, 2), 
+            " /  Doporučená:",  round(fin_cenaEUR+marzeDop)),
       paste("Minimální:", round(fin_cenaCZK+marzeMin*kurz, 2), 
             " /  Doporučená:", round(fin_cenaCZK+marzeDop*kurz, 2))
     )
@@ -229,6 +223,12 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
     log <- paste(tms_now, obch, zak, suma_profil, delOd, delDo, fin_cenaEUR, sep = ";")
     write(log, "data/kalkulackaZP_log.txt", append = TRUE)
   })
+  
+  # cat(paste(
+  #   tms_now, obch, zak, suma_profil, delOd, delDo, fin_cenaEUR,
+  #   sep = ";"
+  # ), "\n")
+  # 
   
   return(list(
     profil = profil,

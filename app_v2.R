@@ -20,17 +20,11 @@ start_date <- as.Date(cut(Sys.Date(), "month")) + months(1)
 # ---------------------------------------------------- UI
 
 
-ui <- page_fillable(
+ui <- page_sidebar(
   
   titlePanel("Kalkulačka fixní ceny ZP"),
   input_dark_mode(id = "mode"), 
   
-  layout_columns( # cards beside each other
-    
-    card( 
-      
-      card_header("Vstupní informace"),
-      
       textInput( 
         inputId = "text1", 
         label = tagList("Obchodník", 
@@ -50,7 +44,7 @@ ui <- page_fillable(
       
       tagList(
         tags$div("Nahrajte profil ve formátu XLS/XLSX. 
-                 Soubor musí obsahovat dva sloupce: datum a profil v MWh.", 
+                 Soubor musí obsahovat dva sloupce: \"datum\" a \"profilMWh\".", 
                  style = "color: grey; margin-bottom: 5px;"),
         
         fileInput(
@@ -61,13 +55,8 @@ ui <- page_fillable(
           accept = c(".xls", ".xlsx")
         ),
         
-        plotOutput("plot")
-      )
-    ),
+        plotOutput("plot"),
     
-    card( 
-      
-      card_header("Výpočet ceny"),
       
       tags$div(
         tags$label("Období dodávky"),
@@ -104,7 +93,7 @@ ui <- page_fillable(
       
     )
   )
-)
+
 
 
 # ---------------------------------------------------- SERVER
@@ -125,7 +114,7 @@ server <- function(input, output, session) {
   output$plot <- renderPlot({
     profil <- data_upload()
     req(profil)
-    colnames(profil) <- c("datum", "profilMWh")
+    
     ggplot(profil, aes(datum, profilMWh)) +
       geom_line(linewidth = 2, color = "gold") +
       labs(x = "měsíc dodávky",
