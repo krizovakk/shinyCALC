@@ -22,7 +22,41 @@ start_date <- as.Date(cut(Sys.Date(), "month")) + months(1)
 
 ui <- page_fillable(
   
-  titlePanel("Kalkulačka fixní ceny ZP"),
+  titlePanel(
+
+    # tags$div(
+    #   style = "
+    #     display: flex;
+    #     align-items: center;
+    #     justify-content: space-between;
+    #     width: 100%;
+    #   ",
+    # 
+    #   # sranda s animaci
+    #   # LEVÁ ČÁST: logo + title
+    #   tags$div(
+    #     style = "display:flex; align-items:center; gap:20px;",
+    #     tags$img(src = "22743_SPP_logo spp_final update.jpg", height = "50px"),
+    #     tags$span("Kalkulačka fixní ceny ZP", style = "font-size:24px; font-weight:600;")
+    #   ),
+    # 
+    #   # PRAVÁ ČÁST: GIF
+    #   tags$img(src = "flowers-wolf.gif", height = "50px")
+    # )
+    
+    # puvodni funkcni s logem
+    tags$div(
+      style = "display:flex; align-items:center; gap:20px;",
+      tags$img(
+        src = "22743_SPP_logo spp_final update.jpg",
+        height = "50px"
+        # src = "flowers-wolf.gif",
+        # height = "200px"
+      ),
+      span("Kalkulačka fixní ceny ZP")
+    )
+  ),
+  
   input_dark_mode(id = "mode"), 
   
   layout_columns( # cards beside each other

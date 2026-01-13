@@ -28,8 +28,8 @@ params:
 ```{r echo=FALSE}
 
 knitr::kable(params$profil, caption = "Profil spotřeby") 
-# knitr::kable(params$fwd, caption = "FWD křivka") 
-# knitr::kable(params$otc, caption = "OTC ceny") 
+knitr::kable(params$fwd, caption = "FWD křivka")
+knitr::kable(params$otc, caption = "OTC ceny")
 
 # "C:/Users/krizova/Documents/R/02 cenoveKalkukacky/_vyvoj/shiny_app/data/22743_SPP_logo spp_final update.jpg"
 

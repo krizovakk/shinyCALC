@@ -12,11 +12,18 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   colnames(profil) <- c("datum", "profilMWh", "mesic", "rok")
   print(head(profil))
   
+  # pro test
+  
+  delOd <- as.Date("2026-05-01")
+  delDo <- as.Date("2027-01-01")
+  
+  
   # ---------------------------------------------------------------------------- INPUT :: forward - OK
   
-  
-  a <- read_excel(file.path("data", "input_fwd.xlsx"), 
-                  sheet = "Rentry")
+  # test
+  a <- read_excel("C:/Users/krizova/Documents/R/02 cenoveKalkukacky/_vyvoj/shiny_app/data/input_fwd.xlsx")
+  # a <- read_excel(file.path("data", "input_fwd.xlsx"), 
+  #                 sheet = "Rentry")
   a$mesic <- as.Date(a$mesic, origin = "1899-12-30")
   fwd <- a %>% 
     rename("PFC" = NCG, "FX" = 'FX rate') %>% 
@@ -30,8 +37,9 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # ---------------------------------------------------------------------------- INPUT :: OTC - OK
   
   
-  b <- read.csv(file.path(path, "CZ-VTP.csv"), header = TRUE, sep = ",")
-  # b <- read.csv("X:/OTC/CSV/CZ-VTP.csv", header = TRUE, sep = ",")
+  # b <- read.csv(file.path(path, "CZ-VTP.csv"), header = TRUE, sep = ",") # funguje i hostovane - staticky soubor
+  # b <- read.csv("X:/OTC/CSV/CZ-VTP.csv", header = TRUE, sep = ",") # funguje lokalne - aktualizave 15'
+  b <- read.csv("C:/Users/krizova/Documents/R/02 cenoveKalkukacky/_vyvoj/shiny_app/data/CZ-VTP.csv", header = TRUE, sep = ",") # test
   otc <- b %>%
     select("season" = 1, "price" = 2) %>%
     filter(str_detect(season, "^CZ")) %>%
@@ -42,6 +50,7 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
         str_detect(season, "2026|26") ~ 2026,
         str_detect(season, "2027|27") ~ 2027,
         str_detect(season, "2028|28") ~ 2028,
+        str_detect(season, "2029|29") ~ 2029,
         TRUE ~ NA
       ),
       quater = case_when(
@@ -73,8 +82,10 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # ---------------------------------------------------------------------------- CREATE :: frame - OK
   
   
-  frameOd <- as.Date("2025-01-01")
-  frameDo <- as.Date("2028-12-31")
+  # frameOd <- as.Date("2025-01-01")
+  # frameDo <- as.Date("2028-12-31")
+  frameOd <- as.Date("2026-01-01")
+  frameDo <- as.Date("2029-12-31")
   framePer <- seq(from = frameOd, to = frameDo, by = "month")
   
   delPer <- as.POSIXct(seq(from = delOd, to = delDo, by = "month") %>% head(-1)) # head = maze posledni element (1.1.2027)
@@ -114,11 +125,13 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
     group_by(year) %>%
     mutate(yRatio = PFC/mean(PFC)) %>% # kdyz neni cely rok, hodi pres prumer NA
     ungroup() %>% group_by(year, quater) %>%
-    mutate(celyQ = if_else(all(dodavka == 1)&is.na(yRatio), "ANO", "NE"),
+    
+    mutate(celyQ = if_else(all(!is.na(PFC)) & is.na(yRatio), "ANO", "NE"),
            # avg = mean(PFC),
            qRatio = ifelse(celyQ == "ANO", PFC/mean(PFC), NA),
            PFCratio = coalesce(yRatio, qRatio)) %>% ungroup() %>%
-    select(-yRatio, -qRatio) %>%
+    
+    # select(-yRatio, -qRatio) %>%
     left_join(otc %>%
                 select(year, month, "monPrice" = price), by = c("year", "month")) %>%
     left_join(otc %>%
