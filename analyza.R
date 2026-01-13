@@ -9,28 +9,38 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # tms_now <- Sys.Date()
   tms_now <- Sys.time()
   print(tms_now)
+  colnames(profil) <- c("datum", "profilMWh", "mesic", "rok")
+  print(head(profil))
   
   
   # ---------------------------------------------------------------------------- INPUT :: forward - OK
   
-  
-  a <- read_excel(file.path("data", "input_fwd.xlsx"), 
+
+  a <- read_excel(file.path("data", "input_fwd.xlsx"),
                   sheet = "Rentry")
   a$mesic <- as.Date(a$mesic, origin = "1899-12-30")
   fwd <- a %>% 
     rename("PFC" = NCG, "FX" = 'FX rate') %>% 
-    filter(mesic > tms_now) # hodnoty fwd krivky od nasledujiciho mesice
-  # fwd_akt <- lubridate::date(unique(fwd$akt))
-  # 
+    filter(mesic > tms_now) %>% # hodnoty fwd krivky od nasledujiciho mesice
+    mutate(PFC = round(PFC, 3))
   # # if (any(is.na(fwd$PFC))) stop("Nemáš komplet PFC krivku")
   # # if (any(is.na(fwd$FX))) stop("Nemáš komplet FX krivku")
+  
+  # ------------------ kontrola ***
+  
+  fwdcheck <- fwd %>% filter(mesic>=delOd)
+  
+  conditionFWD <- any(is.na(fwdcheck$PFC))|any(fwdcheck$PFC == 0)
+  if (conditionFWD) {
+    stop('Neuplna FWD krivka')
+  }
   
   
   # ---------------------------------------------------------------------------- INPUT :: OTC - OK
   
   
-  b <- read.csv(file.path(path, "CZ-VTP.csv"), header = TRUE, sep = ",")
-  # b <- read.csv("X:/OTC/CSV/CZ-VTP.csv", header = TRUE, sep = ",")
+  # b <- read.csv(file.path(path, "CZ-VTP.csv"), header = TRUE, sep = ",") # funguje i hostovane - staticky soubor
+  b <- read.csv("X:/OTC/CSV/CZ-VTP.csv", header = TRUE, sep = ",") # funguje lokalne - aktualizave 15'
   otc <- b %>%
     select("season" = 1, "price" = 2) %>%
     filter(str_detect(season, "^CZ")) %>%
@@ -41,6 +51,7 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
         str_detect(season, "2026|26") ~ 2026,
         str_detect(season, "2027|27") ~ 2027,
         str_detect(season, "2028|28") ~ 2028,
+        str_detect(season, "2029|29") ~ 2029,
         TRUE ~ NA
       ),
       quater = case_when(
@@ -65,15 +76,16 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
         str_detect(season, "Dec-") ~ 12,
         TRUE ~ NA
       ),
-      cal = as.character(ifelse(str_detect(season, "^CZ VTP \\d{4}$"), paste0("Cal", str_remove(year, "^..")), NA))
-    )
+      cal = as.character(ifelse(str_detect(season, "^CZ VTP \\d{4}$"), paste0("Cal", str_remove(year, "^..")), NA))) %>% 
+    unite(product, c("cal", "month", "quater", "year"),
+          sep = "/", na.rm = T, remove = FALSE)
   
   
   # ---------------------------------------------------------------------------- CREATE :: frame - OK
   
   
-  frameOd <- as.Date("2025-01-01")
-  frameDo <- as.Date("2028-12-31")
+  frameOd <- as.Date("2026-01-01") # --- treba upravit pri prechodu do noveho roku
+  frameDo <- as.Date("2029-12-31")
   framePer <- seq(from = frameOd, to = frameDo, by = "month")
   
   delPer <- as.POSIXct(seq(from = delOd, to = delDo, by = "month") %>% head(-1)) # head = maze posledni element (1.1.2027)
@@ -113,8 +125,8 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
     group_by(year) %>%
     mutate(yRatio = PFC/mean(PFC)) %>% # kdyz neni cely rok, hodi pres prumer NA
     ungroup() %>% group_by(year, quater) %>%
-    mutate(celyQ = if_else(all(dodavka == 1)&is.na(yRatio), "ANO", "NE"),
-           # avg = mean(PFC),
+    
+    mutate(celyQ = if_else(all(!is.na(PFC)) & is.na(yRatio), "ANO", "NE"),
            qRatio = ifelse(celyQ == "ANO", PFC/mean(PFC), NA),
            PFCratio = coalesce(yRatio, qRatio)) %>% ungroup() %>%
     select(-yRatio, -qRatio) %>%
@@ -125,7 +137,7 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
     left_join(otc %>%
                 filter(!is.na(cal)) %>%
                 select(year, "calPrice" = price), by = c("year")) %>%
-    mutate(otcPrice = case_when(celyQ == "NE" & is.na(PFCratio)~ monPrice,
+    mutate(otcPrice = case_when(celyQ == "NE" & is.na(PFCratio) ~ monPrice,
                                 celyQ == "ANO" ~ qPrice,
                                 TRUE ~ calPrice),
            PFCprepoc = ifelse(!is.na(PFCratio), otcPrice*PFCratio, otcPrice),
@@ -137,11 +149,27 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
            FXrecalc = FXrecalc0+surcharge,
            
            cenaEUR = profilMWh*PFCprepoc,
-           vazenaCena = profilMWh*FXrecalc)
+           vazenaCena = profilMWh*FXrecalc,
+           product = paste(month, quater, year))
   
   data_vstup <- join %>%
-    select(year, month, dodavka, profilMWh, PFCprepoc, cenaEUR, FXrecalc, vazenaCena) %>%
+    select(year, month, dodavka, profilMWh, product, otcPrice, PFCprepoc, cenaEUR, FXrecalc, vazenaCena) %>%
     filter(dodavka == 1) # final df to match table on sheet Kalkulace
+  
+  
+  # ------------------ kontrola ***
+
+  
+  conditionPROF <- any(is.na(data_vstup$profilMWh))
+  if (conditionPROF) {
+    stop('Neuplny profil')
+  }
+  
+  conditionOTC <- any(is.na(data_vstup$otcPrice))
+  if (conditionOTC) {
+    prod <- data_vstup$product[is.na(data_vstup$otcPrice)]
+    stop(paste('Chybi OTC cena pro', prod))
+  }
   
   
   # ---------------------------------------------------------------------------- CALCULATE :: fix_cena - OK
@@ -150,6 +178,8 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # vypocty pod tabulkou
   
   suma_profil <- round(sum(data_vstup$profilMWh, na.rm = TRUE), 0)
+  acq <- data_vstup %>% 
+    group_by(year) %>% summarise(rocni_odber = round(sum(profilMWh, na.rm = T), 0))
   suma_cenaEUR <- sum(data_vstup$cenaEUR, na.rm = TRUE)
   suma_vazenaCena <- sum(data_vstup$vazenaCena, na.rm = TRUE)
   mean_PFC <- mean(data_vstup$PFCprepoc, na.rm = TRUE)
@@ -166,31 +196,25 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   fin_cenaCZK <- ceiling((fin_cenaEUR*kurz)/0.05) * 0.05 # zaokrouhleni na nejblizsi nejvyssi hranici 0,05
   
   
+  # ------------------ kontrola ***
+  
+  conditionNPF <- naklad_profil<0
+  if (conditionNPF) {
+    print('Zaporny naklad na profil')
+  }
+  
+  
   # ---------------------------------------------------------------------------- CREATE :: marze - IP
   
   
-  # marzeNazev <- c("minimalni", "doporucena")
-  # marzeHodnota <- c(1.2, 6)
-  # 
-  # marze <- data.frame(
-  #   varianta = marzeNazev, 
-  #   hodnota = marzeHodnota)
   marzeMin <- 1.2
   marzeDop <- 6
+  txt_marzeMin <- sprintf("%.2f", marzeMin) # text, zobrazuje cislo s presne 2 decimals
+  txt_marzeDop <- sprintf("%.2f", marzeDop)
   
   
   # ---------------------------------------------------------------------------- RETURN :: fix_cena - OK
   
-  # 
-  # fix_cena <- data.frame(
-  #   Od = delOd,
-  #   Do = delDo,
-  #   `Objem [MWh]` = suma_profil,
-  #   `Předávací cena EUR` = round(fin_cenaEUR, 2),
-  #   `Předávací cena CZK` = round(fin_cenaCZK, 2),
-  #   `Náklad na BSD [€]` = bsd,
-  #   check.names = FALSE # aby nebyly v nazvu sloupcu misto mezer tecky
-  # )
   
   fix_cena <- data.frame(
     Parametr = c(
@@ -199,7 +223,8 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       "Období dodávky",
       "Vytvoření nabídky",
       "Platnost nabídky",
-      "Celkový objem dodávky [MWh]",
+      "CQ [MWh]",
+      "ACQ [MWh]",
       "Předávací cena pro obchod [€]",
       "Předávací cena pro obchod [CZK]",
       "HM1 [€]",
@@ -214,10 +239,14 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       format(as.POSIXct(tms_now, origin = "1899-12-30"), "%F %R"),
       paste0(format(as.POSIXct(Sys.Date(), origin = "1899-12-30"), "%F"), " 15:00"),
       suma_profil,
-      fin_cenaEUR,
-      fin_cenaCZK,
-      paste("Minimální:", marzeMin, " /  Doporučená:", marzeDop),
-      paste("Minimální:", fin_cenaEUR+marzeMin, " /  Doporučená:", fin_cenaEUR+marzeDop),
+      paste(
+        paste(acq$year, acq$rocni_odber, sep = ": "),
+        collapse = ", "),
+      round(fin_cenaEUR, 2),
+      round(fin_cenaCZK, 2),
+      paste("Minimální:", txt_marzeMin, " /  Doporučená:", txt_marzeDop),
+      paste("Minimální:",  round(fin_cenaEUR+marzeMin, 2), 
+            " /  Doporučená:",  round(fin_cenaEUR+marzeDop)),
       paste("Minimální:", round(fin_cenaCZK+marzeMin*kurz, 2), 
             " /  Doporučená:", round(fin_cenaCZK+marzeDop*kurz, 2))
     )
@@ -229,6 +258,12 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
     log <- paste(tms_now, obch, zak, suma_profil, delOd, delDo, fin_cenaEUR, sep = ";")
     write(log, "data/kalkulackaZP_log.txt", append = TRUE)
   })
+  
+  # cat(paste(
+  #   tms_now, obch, zak, suma_profil, delOd, delDo, fin_cenaEUR,
+  #   sep = ";"
+  # ), "\n")
+  # 
   
   return(list(
     profil = profil,

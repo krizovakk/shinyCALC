@@ -22,14 +22,48 @@ start_date <- as.Date(cut(Sys.Date(), "month")) + months(1)
 
 ui <- page_fillable(
   
-  titlePanel("Kalkulačka fixní ceny ZP"),
+  titlePanel(
+
+    # tags$div(
+    #   style = "
+    #     display: flex;
+    #     align-items: center;
+    #     justify-content: space-between;
+    #     width: 100%;
+    #   ",
+    # 
+    #   # sranda s animaci
+    #   # LEVÁ ČÁST: logo + title
+    #   tags$div(
+    #     style = "display:flex; align-items:center; gap:20px;",
+    #     tags$img(src = "22743_SPP_logo spp_final update.jpg", height = "50px"),
+    #     tags$span("Kalkulačka fixní ceny ZP", style = "font-size:24px; font-weight:600;")
+    #   ),
+    # 
+    #   # PRAVÁ ČÁST: GIF
+    #   tags$img(src = "flowers-wolf.gif", height = "50px")
+    # )
+    
+    # puvodni funkcni s logem
+    tags$div(
+      style = "display:flex; align-items:center; gap:20px;",
+      tags$img(
+        src = "22743_SPP_logo spp_final update.jpg",
+        height = "50px"
+        # src = "flowers-wolf.gif",
+        # height = "200px"
+      ),
+      span("Kalkulačka fixní ceny ZP")
+    )
+  ),
+  
   input_dark_mode(id = "mode"), 
   
   layout_columns( # cards beside each other
     
     card( 
       
-      card_header("Vstupní profil klienta"),
+      card_header("Vstupní informace"),
       
       textInput( 
         inputId = "text1", 
@@ -50,7 +84,7 @@ ui <- page_fillable(
       
       tagList(
         tags$div("Nahrajte profil ve formátu XLS/XLSX. 
-                 Soubor musí obsahovat dva sloupce: \"datum\" a \"profilMWh\".", 
+                 Soubor musí obsahovat dva sloupce: datum a profil v MWh.", 
                  style = "color: grey; margin-bottom: 5px;"),
         
         fileInput(
@@ -64,7 +98,7 @@ ui <- page_fillable(
         plotOutput("plot")
       )
     ),
-      
+    
     card( 
       
       card_header("Výpočet ceny"),
@@ -125,7 +159,7 @@ server <- function(input, output, session) {
   output$plot <- renderPlot({
     profil <- data_upload()
     req(profil)
-    
+    colnames(profil) <- c("datum", "profilMWh")
     ggplot(profil, aes(datum, profilMWh)) +
       geom_line(linewidth = 2, color = "gold") +
       labs(x = "měsíc dodávky",
@@ -175,7 +209,7 @@ server <- function(input, output, session) {
     delOd <- start
     delDo <- end
     
-    source("analyzaFun.R") 
+    source("analyza.R") 
     
     result <- analyza_data(profil, delOd, delDo, 
                            obch = obch, zak = zak, 

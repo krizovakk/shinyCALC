@@ -5,6 +5,6 @@ account: sppcalc
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 16286114
-bundleId: 11302917
+bundleId: 11313655
 url: https://sppcalc.shinyapps.io/shiny_app/
 version: 1
