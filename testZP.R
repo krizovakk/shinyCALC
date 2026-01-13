@@ -153,7 +153,7 @@ join <- frame %>%
   left_join(otc %>%
               filter(!is.na(cal)) %>%
               select(year, "calPrice" = price), by = c("year")) %>%
-  mutate(otcPrice = case_when(celyQ == "NE" & is.na(PFCratio)~ monPrice,
+  mutate(otcPrice = case_when(celyQ == "NE" & is.na(PFCratio) ~ monPrice,
                               celyQ == "ANO" ~ qPrice,
                               TRUE ~ calPrice),
          PFCprepoc = ifelse(!is.na(PFCratio), otcPrice*PFCratio, otcPrice),
