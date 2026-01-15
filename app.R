@@ -161,7 +161,8 @@ server <- function(input, output, session) {
     req(profil)
     colnames(profil) <- c("datum", "profilMWh")
     ggplot(profil, aes(datum, profilMWh)) +
-      geom_line(linewidth = 2, color = "gold") +
+      # geom_line(linewidth = 2, color = "gold") +
+      geom_col(fill = "gold") +
       labs(x = "měsíc dodávky",
            y = "profil spotřeby [MWh]",
            title = "Profil spotřeby klienta") +
@@ -194,7 +195,8 @@ server <- function(input, output, session) {
   # ---- SPUSTENI VYPOCTU ----
   # ---- GENEROVANI PDF ----
   
-  observeEvent(input$run, {
+  vysledek <- eventReactive(input$run, {
+    
     req(input$upload, input$date, input$text1, input$text2)
     
     profil <- read_excel(input$upload$datapath) %>%
@@ -211,23 +213,35 @@ server <- function(input, output, session) {
     
     source("analyza.R") 
     
-    result <- analyza_data(profil, delOd, delDo, 
-                           obch = obch, zak = zak, 
-                           path = "data/")
+    analyza_data(
+      profil,
+      start,
+      end,
+      obch = input$text1,
+      zak  = input$text2,
+      path = "data/"
+    )
+  })
+    
+  output$results <- DT::renderDT({
+    
+    result <- vysledek()
     
     fix_cena <- result$fix_cena
+    validate(need(is.data.frame(fix_cena), "Výsledek není datová tabulka"))
     
-    req(fix_cena)
-    if(!is.data.frame(fix_cena)) fix_cena <- as.data.frame(fix_cena)
-    
-    output$results <- DT::renderDT(
+    DT::datatable(
       fix_cena,
       rownames = FALSE,
-      options = list(dom = 't', 
-                     ordering = FALSE,
-                     paging = FALSE)
+      options = list(
+        dom = 't',       # odstraní paging a search
+        ordering = FALSE,
+        paging = FALSE
+      )
     )
     
+  })
+  
     output$downloadReport <- downloadHandler(
       filename = function() {
         paste0("VypocetFixCenyZP_report_", Sys.time(), ".pdf")
@@ -250,8 +264,71 @@ server <- function(input, output, session) {
         )
       }
     )
-  })
 }
+#   
+#   observeEvent(input$run, {
+#     req(input$upload, input$date, input$text1, input$text2)
+#     
+#     profil <- read_excel(input$upload$datapath) %>%
+#       mutate(mesic = month(datum),
+#              rok = year(datum))  # načtení nahraného profilu
+#     
+#     start <- as.Date(format(input$date[1], "%Y-%m-01"))
+#     end <- as.Date(format(input$date[2], "%Y-%m-01"))
+#     obch <- input$text1
+#     zak <- input$text2
+#     
+#     delOd <- start
+#     delDo <- end
+#     
+#     source("analyza.R") 
+#     
+#     result <- analyza_data(profil, delOd, delDo, 
+#                            obch = obch, zak = zak, 
+#                            path = "data/")
+#     
+#     # if (isTRUE(result$error)) {
+#     #   showNotification(result$message, type = "error")
+#     #   return(NULL)
+#     # }
+#     
+#     fix_cena <- result$fix_cena
+#     
+#     req(fix_cena)
+#     if(!is.data.frame(fix_cena)) fix_cena <- as.data.frame(fix_cena)
+#     
+#     output$results <- DT::renderDT(
+#       fix_cena,
+#       rownames = FALSE,
+#       options = list(dom = 't', 
+#                      ordering = FALSE,
+#                      paging = FALSE)
+#     )
+#     
+#     output$downloadReport <- downloadHandler(
+#       filename = function() {
+#         paste0("VypocetFixCenyZP_report_", Sys.time(), ".pdf")
+#       },
+#       content = function(file) {
+#         rmarkdown::render(
+#           input = "report.Rmd",
+#           output_file = file,
+#           params = list(
+#             obchodnik = input$text1,
+#             zakaznik = input$text2,
+#             datum_od = input$date[1],
+#             datum_do = input$date[2],
+#             profil = data_upload(),
+#             fwd = result$fwd,
+#             otc = result$otc,
+#             fix_cena = result$fix_cena
+#           ),
+#           envir = new.env(parent = globalenv())
+#         )
+#       }
+#     )
+#   })
+# }
 
 
 # ---------------------------------------------------- APP

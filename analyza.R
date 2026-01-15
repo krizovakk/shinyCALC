@@ -16,7 +16,7 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # ---------------------------------------------------------------------------- INPUT :: forward - OK
   
 
-  a <- read_excel(file.path("data", "input_fwd.xlsx"),
+  a <- read_excel(file.path("data", "input_fwd.xlsx"), # ve slozce aplikace - treba denne aktualizovat
                   sheet = "Rentry")
   a$mesic <- as.Date(a$mesic, origin = "1899-12-30")
   fwd <- a %>% 
@@ -30,12 +30,15 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   
   fwdcheck <- fwd %>% filter(mesic>=delOd)
   
+  # test
+  # fwdcheck [20,3] <- NA
+  
   conditionFWD <- any(is.na(fwdcheck$PFC))|any(fwdcheck$PFC == 0)
   if (conditionFWD) {
     stop('Neuplna FWD krivka')
   }
-  
-  
+
+  # 
   # ---------------------------------------------------------------------------- INPUT :: OTC - OK
   
   
@@ -159,12 +162,16 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   
   # ------------------ kontrola ***
 
+  # test
   
-  conditionPROF <- any(is.na(data_vstup$profilMWh))
-  if (conditionPROF) {
-    stop('Neuplny profil')
-  }
-  
+  # data_vstup[8, 4] <- NA
+  data_vstup[8, 6] <- NA
+
+  # conditionPROF <- any(is.na(data_vstup$profilMWh))
+  # if (conditionPROF) {
+  #   stop('Neuplny profil, zkontroluj vstupni data.')
+  # }
+
   conditionOTC <- any(is.na(data_vstup$otcPrice))
   if (conditionOTC) {
     prod <- data_vstup$product[is.na(data_vstup$otcPrice)]

@@ -264,3 +264,18 @@ fix_cena2 <- data.frame(
 )
 
 view(fix_cena2)
+
+
+# ---------------------------------------------------------------------------- RETURN :: plot
+
+
+ggplot(profil, aes(datum, profilMWh)) +
+  # geom_line(linewidth = 2, color = "gold") +
+  geom_col(fill = "gold") +
+  labs(x = "měsíc dodávky",
+       y = "profil spotřeby [MWh]",
+       title = "Profil spotřeby klienta") +
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%Y-%m") +
+  scale_y_continuous(breaks = seq(0, 700, by = 50))+
+  theme_light() +
+  theme(axis.text.x = element_text(angle = 90))
