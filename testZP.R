@@ -9,8 +9,8 @@ print(head(profil))
 
 # pro test
 
-delOd <- as.Date("2026-04-01")
-delDo <- as.Date("2027-04-01")
+delOd <- as.Date("2026-02-01")
+delDo <- as.Date("2030-01-01")
 
 profil <- read_excel("C:/Users/krizova/Documents/R/02 cenoveKalkukacky/_vyvoj/vstupy/input_profil.xlsx")
 
@@ -22,8 +22,8 @@ a <- read_excel("C:/Users/krizova/Documents/R/02 cenoveKalkukacky/_vyvoj/shiny_a
 a$mesic <- as.Date(a$mesic, origin = "1899-12-30")
 fwd <- a %>% 
   rename("PFC" = NCG, "FX" = 'FX rate') %>% 
-  filter(mesic > tms_now) %>%  # hodnoty fwd krivky od nasledujiciho mesice
-  mutate(PFC = round(PFC, 3))
+  filter(mesic > tms_now)   # hodnoty fwd krivky od nasledujiciho mesice
+  
 # fwd_akt <- lubridate::date(unique(fwd$akt))
 # 
 # # if (any(is.na(fwd$PFC))) stop("Nemáš komplet PFC krivku")
@@ -166,7 +166,9 @@ join <- frame %>%
          
          cenaEUR = profilMWh*PFCprepoc,
          vazenaCena = profilMWh*FXrecalc,
-         product = paste(month, quater, year))
+         # product = paste(month, quater, year))
+         product = case_when(year(tms_now) != year ~ paste0("Cal", str_remove(year, "^..")),
+                             TRUE ~ paste0(month, "/", year)))
 
 data_vstup <- join %>%
   select(year, month, dodavka, profilMWh, product, otcPrice, PFCprepoc, cenaEUR, FXrecalc, vazenaCena) %>%
