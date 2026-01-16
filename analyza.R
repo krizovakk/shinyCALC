@@ -13,28 +13,40 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   print(head(profil))
   
   
+  # conditionDEL2 <- is.Date(delOd)
+  # if (conditionDEL2) {
+  #   stop('Zadej platne datum')
+  # }
+  # 
+  # conditionDEL <- is.Date(delDo)
+  # if (conditionDEL) {
+  #   stop('Zadej platne datum')
+  # }
+
+  
   # ---------------------------------------------------------------------------- INPUT :: forward - OK
   
 
-  a <- read_excel(file.path("data", "input_fwd.xlsx"),
+  a <- read_excel(file.path("data", "input_fwdKrivka.xlsx"), # ve slozce aplikace - treba denne aktualizovat
                   sheet = "Rentry")
   a$mesic <- as.Date(a$mesic, origin = "1899-12-30")
   fwd <- a %>% 
     rename("PFC" = NCG, "FX" = 'FX rate') %>% 
-    filter(mesic > tms_now) %>% # hodnoty fwd krivky od nasledujiciho mesice
-    mutate(PFC = round(PFC, 3))
-  # # if (any(is.na(fwd$PFC))) stop("Nemáš komplet PFC krivku")
-  # # if (any(is.na(fwd$FX))) stop("Nemáš komplet FX krivku")
+    filter(mesic > tms_now)  # hodnoty fwd krivky od nasledujiciho mesice
+   
   
   # ------------------ kontrola ***
   
   fwdcheck <- fwd %>% filter(mesic>=delOd)
   
+  # test
+  # fwdcheck [20,3] <- NA
+  
   conditionFWD <- any(is.na(fwdcheck$PFC))|any(fwdcheck$PFC == 0)
   if (conditionFWD) {
-    stop('Neuplna FWD krivka')
+    stop('Neuplna FWD krivka, kontaktuj Nakup.')
   }
-  
+
   
   # ---------------------------------------------------------------------------- INPUT :: OTC - OK
   
@@ -79,7 +91,7 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       cal = as.character(ifelse(str_detect(season, "^CZ VTP \\d{4}$"), paste0("Cal", str_remove(year, "^..")), NA))) %>% 
     unite(product, c("cal", "month", "quater", "year"),
           sep = "/", na.rm = T, remove = FALSE)
-  
+
   
   # ---------------------------------------------------------------------------- CREATE :: frame - OK
   
@@ -113,9 +125,9 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   # ---------------------------------------------------------------------------- CREATE :: data_vstup - OK
   
   
-  low_spot <- 24.30
-  aktual_spot <- low_spot + 0.4
-  surcharge <- 0.05 
+  low_spot <- 24.250
+  aktual_spot <- low_spot + 0.35
+  surcharge <- 0.00 
   bsd <- 1.2
   
   join <- frame %>%
@@ -140,17 +152,20 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
     mutate(otcPrice = case_when(celyQ == "NE" & is.na(PFCratio) ~ monPrice,
                                 celyQ == "ANO" ~ qPrice,
                                 TRUE ~ calPrice),
-           PFCprepoc = ifelse(!is.na(PFCratio), otcPrice*PFCratio, otcPrice),
+           PFCprepoc = round(ifelse(!is.na(PFCratio), otcPrice*PFCratio, otcPrice), 3),
            
            # kurz EUR
            
-           swapPoint = (FX-low_spot)*1000,
+           swapPoint = round((FX-low_spot)*1000, 2), 
            FXrecalc0 = aktual_spot+swapPoint/1000, # +surcharge (ale v excelu je 0)
-           FXrecalc = FXrecalc0+surcharge,
+           # FXrecalc = round(FXrecalc0+surcharge, 4),
+           FXrecalc = (FXrecalc0+surcharge),
            
            cenaEUR = profilMWh*PFCprepoc,
            vazenaCena = profilMWh*FXrecalc,
-           product = paste(month, quater, year))
+           # product = paste(month, quater, year))
+           product = case_when(year(tms_now) != year ~ paste0("Cal", str_remove(year, "^..")),
+                               TRUE ~ paste0(month, "/", year)))
   
   data_vstup <- join %>%
     select(year, month, dodavka, profilMWh, product, otcPrice, PFCprepoc, cenaEUR, FXrecalc, vazenaCena) %>%
@@ -159,18 +174,22 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
   
   # ------------------ kontrola ***
 
-  
-  conditionPROF <- any(is.na(data_vstup$profilMWh))
-  if (conditionPROF) {
-    stop('Neuplny profil')
-  }
-  
+  # test
+  # data_vstup[11, 6] <- NA
+  # data_vstup[18, 4] <- NA
+
   conditionOTC <- any(is.na(data_vstup$otcPrice))
   if (conditionOTC) {
     prod <- data_vstup$product[is.na(data_vstup$otcPrice)]
-    stop(paste('Chybi OTC cena pro', prod))
+    stop(paste0("Momentalne neni dostupna vstupni cena pro ", prod, ". Zkus vypocet znovu za 15 min."))
+    # stop("Chybi vstupni cena pro vypocet.")
   }
-  
+ 
+  conditionPROF <- any(is.na(data_vstup$profilMWh))
+  if (conditionPROF) {
+    stop('Neuplny profil, zkontroluj vstupni data.')
+  }
+
   
   # ---------------------------------------------------------------------------- CALCULATE :: fix_cena - OK
   
@@ -229,7 +248,14 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       "Předávací cena pro obchod [CZK]",
       "HM1 [€]",
       "Prodejní cena pro zákazníka [€]",
-      "Prodejní cena pro zákazníka [CZK]"
+      "Prodejní cena pro zákazníka [CZK]",
+      "Prumer EUR",
+      "Suma ceny EUR",
+      "Suma vazene ceny",
+      "Nakup",
+      "Prodej",
+      "Kurz",
+      "Naklad na profil"
     ),
     
     Hodnota = c(
@@ -248,7 +274,14 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
       paste("Minimální:",  round(fin_cenaEUR+marzeMin, 2), 
             " /  Doporučená:",  round(fin_cenaEUR+marzeDop)),
       paste("Minimální:", round(fin_cenaCZK+marzeMin*kurz, 2), 
-            " /  Doporučená:", round(fin_cenaCZK+marzeDop*kurz, 2))
+            " /  Doporučená:", round(fin_cenaCZK+marzeDop*kurz, 2)),
+      round(mean_PFC, 3),
+      round(suma_cenaEUR, 0),
+      round(suma_vazenaCena, 0),
+      round(nakup, 3),
+      round(prodej_czk, 3),
+      round(kurz, 2),
+      naklad_profil
     )
   )
   
@@ -258,12 +291,6 @@ analyza_data <- function(profil, delOd, delDo, obch, zak, path = "data/") {
     log <- paste(tms_now, obch, zak, suma_profil, delOd, delDo, fin_cenaEUR, sep = ";")
     write(log, "data/kalkulackaZP_log.txt", append = TRUE)
   })
-  
-  # cat(paste(
-  #   tms_now, obch, zak, suma_profil, delOd, delDo, fin_cenaEUR,
-  #   sep = ";"
-  # ), "\n")
-  # 
   
   return(list(
     profil = profil,
